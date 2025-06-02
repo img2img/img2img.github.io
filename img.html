@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手写签名提取透明电子签名</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 1.5rem 1rem;
+            background-color: #f8f9fc;
+            font-size: 1rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            background-color: #fff;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+            gap: 1.5rem;
+        }
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+        .upload-area {
+            width: 100%;
+            max-width: 300px;
+            height: 120px;
+            border: 2px dashed #e5e7eb;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            cursor: pointer;
+            background-color: #ffffff;
+            transition: all 0.3s ease;
+            padding: 1rem;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            .container {
+                padding: 1.2rem;
+            }
+            .controls {
+                gap: 1.2rem;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .slider-group {
+                width: 100%;
+            }
+            .upload-area {
+                max-width: 100%;
+            }
+        }
+        .upload-area:hover {
+            border-color: #2196F3;
+            background-color: #f8f9fd;
+        }
+        .upload-area.dragover {
+            border-color: #4CAF50;
+            background-color: #f0fff0;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider-container input[type="range"] {
+            width: 300px; /* 延长滑动条长度 */
+        }
+        .download-btn {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 10px; /* 进一步缩短下载按钮 */
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+        }
+        .download-btn:hover {
+            background-color: #1976D2;
+            transform: translateY(-1px);
+        }
+        .images-display {
+            display: grid;
+            grid-template-columns: auto 50px auto;
+            gap: 1.5rem;
+            justify-content: center;
+            align-items: center;
+            margin-top: 1.5rem;
+        }
+        .image-wrapper {
+            position: relative;
+            border: 1px solid #ddd;
+        }
+        .arrow-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .arrow-svg {
+            width: 40px;
+            height: 40px;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .crop-rect {
+            position: absolute;
+            border: 2px solid rgba(255, 0, 0, 0.7);
+            box-sizing: border-box;
+            cursor: move;
+        }
+        .crop-rect .handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: rgba(255, 0, 0, 0.7);
+            border: 1px solid rgba(255,255,255,0.9);
+        }
+        .crop-rect .tl { top: -5px; left: -5px; cursor: nwse-resize; }
+        .crop-rect .tr { top: -5px; right: -5px; cursor: nesw-resize; }
+        .crop-rect .bl { bottom: -5px; left: -5px; cursor: nesw-resize; }
+        .crop-rect .br { bottom: -5px; right: -5px; cursor: nwse-resize; }
+        .crop-rect .tm { top: -5px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+        .crop-rect .bm { bottom: -5px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+        .crop-rect .ml { top: 50%; left: -5px; transform: translateY(-50%); cursor: ew-resize; }
+        .crop-rect .mr { top: 50%; right: -5px; transform: translateY(-50%); cursor: ew-resize; }
+
+        #originalCanvasContainer {
+            position: relative; /* Needed for absolute positioning of crop-rect */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>手写签名提取透明电子签名图片</h1>
+
+        <div class="controls">
+            <div id="uploadArea" class="upload-area">
+                点击上传或拖拽图片到此处
+                <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+            </div>
+            <div class="slider-group">
+                <div class="slider-container">
+                    <label for="thresholdSlider">阈值:</label>
+                    <input type="range" id="thresholdSlider" min="0" max="255" value="128">
+                    <span id="thresholdValue">128</span>
+                </div>
+                <button id="downloadBtn" class="download-btn">下载处理后图片</button>
+            </div>
+        </div>
+
+        <div class="images-display">
+            <div class="image-wrapper" id="originalCanvasContainer">
+                <canvas id="originalCanvas"></canvas>
+                <div id="cropRect" class="crop-rect" style="display:none;">
+                    <div class="handle tl"></div><div class="handle tm"></div><div class="handle tr"></div>
+                    <div class="handle ml"></div><div class="handle mr"></div>
+                    <div class="handle bl"></div><div class="handle bm"></div><div class="handle br"></div>
+                </div>
+            </div>
+            <div class="arrow-wrapper">
+                <svg class="arrow-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+                    <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#2196F3"/>
+                        <stop offset="100%" stop-color="#1976D2"/>
+                    </linearGradient>
+                    <path d="M14 12L10 8V10H4V14H10V16L14 12Z" fill="url(#arrowGradient)"/>
+                </svg>
+            </div>
+            <div class="image-wrapper">
+                <canvas id="processedCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const uploadArea = document.getElementById('uploadArea');
+        const thresholdSlider = document.getElementById('thresholdSlider');
+        const thresholdValueDisplay = document.getElementById('thresholdValue');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const processedCanvas = document.getElementById('processedCanvas');
+        const originalCtx = originalCanvas.getContext('2d');
+        const processedCtx = processedCanvas.getContext('2d');
+        const cropRectDiv = document.getElementById('cropRect');
+        const originalCanvasContainer = document.getElementById('originalCanvasContainer');
+
+        let originalImage = null;
+        let cropParams = { x: 0, y: 0, width: 0, height: 0 };
+        let isDragging = false;
+        let isResizing = false;
+        let resizeHandle = '';
+        let startX, startY, initialRectX, initialRectY, initialRectWidth, initialRectHeight;
+
+        // --- Upload Logic ---
+        uploadArea.addEventListener('click', () => imageUpload.click());
+        imageUpload.addEventListener('change', handleImageUpload);
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                imageUpload.files = files;
+                handleImageUpload({ target: imageUpload });
+            }
+        });
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    originalImage = new Image();
+                    originalImage.onload = () => {
+                        // Scale canvas to fit max dimensions while maintaining aspect ratio
+                        const maxWidth = 400;
+                        const maxHeight = 1200;
+                        let newWidth = originalImage.width;
+                        let newHeight = originalImage.height;
+
+                        if (newWidth > maxWidth) {
+                            newHeight = (maxWidth / newWidth) * newHeight;
+                            newWidth = maxWidth;
+                        }
+                        if (newHeight > maxHeight) {
+                            newWidth = (maxHeight / newHeight) * newWidth;
+                            newHeight = maxHeight;
+                        }
+
+                        originalCanvas.width = newWidth;
+                        originalCanvas.height = newHeight;
+                        originalCtx.drawImage(originalImage, 0, 0, newWidth, newHeight);
+
+                        
+                        // Initialize crop rectangle to match original canvas position
+                        cropParams = { x: originalCanvas.offsetLeft, y: originalCanvas.offsetTop, width: originalCanvas.width, height: originalCanvas.height };
+                        processedCanvas.width = cropParams.width;
+                        processedCanvas.height = cropParams.height;
+                        updateCropRectDiv();
+                        cropRectDiv.style.display = 'block';
+                        applyProcessing();
+                    };
+                    originalImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // --- Threshold Logic ---
+        thresholdSlider.addEventListener('input', () => {
+            thresholdValueDisplay.textContent = thresholdSlider.value;
+            if (originalImage) {
+                applyProcessing();
+            }
+        });
+
+        const downloadBtn = document.getElementById('downloadBtn');
+        downloadBtn.addEventListener('click', () => {
+            if (!processedCroppedCanvas) return;
+            const dataURL = processedCroppedCanvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataURL;
+            a.download = 'processed_image.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        // --- Image Processing Logic ---
+        let processedCroppedCanvas = null;
+        function applyProcessing() {
+            if (!originalImage) return;
+
+            processedCanvas.width = 400;
+            processedCanvas.height = 1200;
+
+            // Create a temporary canvas to draw the original full-resolution image
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = originalImage.width;
+            tempCanvas.height = originalImage.height;
+            tempCtx.drawImage(originalImage, 0, 0);
+
+            // Calculate crop coordinates relative to the original image dimensions
+            const scaleX = originalImage.width / originalCanvas.width;
+            const scaleY = originalImage.height / originalCanvas.height;
+
+            const sourceX = cropParams.x * scaleX;
+            const sourceY = cropParams.y * scaleY;
+            const sourceWidth = cropParams.width * scaleX;
+            const sourceHeight = cropParams.height * scaleY;
+
+            if (sourceWidth <= 0 || sourceHeight <= 0) {
+                processedCtx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
+                return;
+            }
+
+            const imageData = tempCtx.getImageData(sourceX, sourceY, sourceWidth, sourceHeight);
+            const data = imageData.data;
+            const threshold = parseInt(thresholdSlider.value);
+
+            // 遍历剪裁区域像素，将浅色背景设为透明
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                if (r > threshold && g > threshold && b > threshold) {
+                    data[i + 3] = 0; // 透明度设为0（完全透明）
+                }
+            }
+            // Clear processed canvas and draw the new processed image, scaled to fit
+            processedCtx.clearRect(0, 0, processedCanvas.width, processedCanvas.height);
+            
+            // Create a temporary canvas for the processed cropped part
+            processedCroppedCanvas = document.createElement('canvas');
+            processedCroppedCanvas.width = sourceWidth;
+            processedCroppedCanvas.height = sourceHeight;
+            processedCroppedCanvas.getContext('2d').putImageData(imageData, 0, 0);
+
+            // Draw the processed cropped image onto the display canvas, maintaining aspect ratio
+            const displayAspect = processedCanvas.width / processedCanvas.height;
+            const cropAspect = sourceWidth / sourceHeight;
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            if (displayAspect > cropAspect) { // Display canvas is wider
+                drawHeight = processedCanvas.height;
+                drawWidth = drawHeight * cropAspect;
+            } else { // Display canvas is taller or same aspect
+                drawWidth = processedCanvas.width;
+                drawHeight = drawWidth / cropAspect;
+            }
+            offsetX = 0;// (processedCanvas.width - drawWidth) / 2;
+            offsetY = 0;// (processedCanvas.height - drawHeight) / 2;
+            processedCanvas.width = drawWidth;
+            processedCanvas.height = drawHeight;
+        
+            processedCtx.drawImage(processedCroppedCanvas, offsetX, offsetY, drawWidth, drawHeight);
+        }
+
+        // --- Crop Rectangle Logic ---
+        function updateCropRectDiv() {
+            cropRectDiv.style.left = cropParams.x + 'px';
+            cropRectDiv.style.top = cropParams.y + 'px';
+            cropRectDiv.style.width = cropParams.width + 'px';
+            cropRectDiv.style.height = cropParams.height + 'px';
+        }
+
+        cropRectDiv.addEventListener('mousedown', (e) => {
+            e.stopPropagation(); // Prevent canvas mousedown if clicking on rect
+            if (e.target.classList.contains('handle')) {
+                isResizing = true;
+                resizeHandle = Array.from(e.target.classList).find(c => c !== 'handle');
+            } else {
+                isDragging = true;
+            }
+            startX = e.clientX;
+            startY = e.clientY;
+            initialRectX = cropParams.x;
+            initialRectY = cropParams.y;
+            initialRectWidth = cropParams.width;
+            initialRectHeight = cropParams.height;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging && !isResizing) return;
+            e.preventDefault();
+
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            if (isDragging) {
+                let newX = initialRectX + dx;
+                let newY = initialRectY + dy;
+
+                // Boundary checks for dragging
+                newX = Math.max(0, Math.min(newX, originalCanvas.width - cropParams.width));
+                newY = Math.max(0, Math.min(newY, originalCanvas.height - cropParams.height));
+
+                cropParams.x = newX;
+                cropParams.y = newY;
+            }
+
+            if (isResizing) {
+                let newX = initialRectX;
+                let newY = initialRectY;
+                let newWidth = initialRectWidth;
+                let newHeight = initialRectHeight;
+
+                if (resizeHandle.includes('l')) {
+                    newWidth = initialRectWidth - dx;
+                    newX = initialRectX + dx;
+                }
+                if (resizeHandle.includes('r')) {
+                    newWidth = initialRectWidth + dx;
+                }
+                if (resizeHandle.includes('t')) {
+                    newHeight = initialRectHeight - dy;
+                    newY = initialRectY + dy;
+                }
+                if (resizeHandle.includes('b')) {
+                    newHeight = initialRectHeight + dy;
+                }
+
+                // Boundary and minimum size checks
+                if (newX < 0) { newWidth += newX; newX = 0; }
+                if (newY < 0) { newHeight += newY; newY = 0; }
+                if (newX + newWidth > originalCanvas.width) { newWidth = originalCanvas.width - newX; }
+                if (newY + newHeight > originalCanvas.height) { newHeight = originalCanvas.height - newY; }
+                
+                const minSize = 20; // Minimum crop size
+                if (newWidth < minSize) {
+                    if (resizeHandle.includes('l')) newX = cropParams.x + cropParams.width - minSize;
+                    newWidth = minSize;
+                }
+                if (newHeight < minSize) {
+                    if (resizeHandle.includes('t')) newY = cropParams.y + cropParams.height - minSize;
+                    newHeight = minSize;
+                }
+
+                cropParams.x = newX;
+                cropParams.y = newY;
+                cropParams.width = newWidth;
+                cropParams.height = newHeight;
+            }
+
+            updateCropRectDiv();
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging || isResizing) {
+                isDragging = false;
+                isResizing = false;
+                // 更新处理后画布尺寸为剪裁区域尺寸
+                // processedCanvas.width = cropParams.width;
+                // processedCanvas.height = cropParams.height;
+                processedCanvas.width = 400;
+                processedCanvas.height = 1200;
+                applyProcessing();
+            }
+        });
+
+    </script>
+</body>
+</html>

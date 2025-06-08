@@ -422,13 +422,18 @@
             const dx = clientX - startX;
             const dy = clientY - startY;
 
+            // 获取 Canvas 的实际显示尺寸（关键修改）
+            const canvasRect = originalCanvas.getBoundingClientRect();
+            const canvasWidth = canvasRect.width;
+            const canvasHeight = canvasRect.height;
+
             if (isDragging) {
                 let newX = initialRectX + dx;
                 let newY = initialRectY + dy;
 
                 // Boundary checks for dragging
-                newX = Math.max(0, Math.min(newX, originalCanvas.width - cropParams.width));
-                newY = Math.max(0, Math.min(newY, originalCanvas.height - cropParams.height));
+                newX = Math.max(0, Math.min(newX, canvasWidth - cropParams.width));
+                newY = Math.max(0, Math.min(newY, canvasHeight - cropParams.height));
 
                 cropParams.x = newX;
                 cropParams.y = newY;
@@ -455,11 +460,11 @@
                     newHeight = initialRectHeight + dy;
                 }
 
-                // Boundary and minimum size checks
+                // 改为使用实际显示尺寸进行边界检查（关键修改）
                 if (newX < 0) { newWidth += newX; newX = 0; }
                 if (newY < 0) { newHeight += newY; newY = 0; }
-                if (newX + newWidth > originalCanvas.width) { newWidth = originalCanvas.width - newX; }
-                if (newY + newHeight > originalCanvas.height) { newHeight = originalCanvas.height - newY; }
+                if (newX + newWidth > canvasWidth) { newWidth = canvasWidth - newX; }
+                if (newY + newHeight > canvasHeight) { newHeight = canvasHeight - newY; }
                 
                 const minSize = 20; // Minimum crop size
                 if (newWidth < minSize) {

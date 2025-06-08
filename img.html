@@ -387,10 +387,12 @@
 
         // --- 合并鼠标和触摸的按下事件 ---
         function handleCropStart(e) {
+            console.log('start1');
             e.preventDefault(); // 阻止默认触摸行为（如滚动）
             const isTouch = e.type === 'touchstart';
             const clientX = isTouch ? e.touches[0].clientX : e.clientX;
             const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+            console.log('start2');
 
             if (e.target.classList.contains('handle')) {
                 isResizing = true;
@@ -398,12 +400,14 @@
             } else {
                 isDragging = true;
             }
+            console.log('start3');
             startX = clientX;
             startY = clientY;
             initialRectX = cropParams.x;
             initialRectY = cropParams.y;
             initialRectWidth = cropParams.width;
             initialRectHeight = cropParams.height;
+            console.log('start4');
         }
 
         // 同时监听鼠标和触摸的按下事件
@@ -412,22 +416,26 @@
 
         // --- 合并鼠标和触摸的移动事件 ---
         function handleCropMove(e) {
+            console.log('move1');
             if (!isDragging && !isResizing) return;
             e.preventDefault();
+            console.log('move2');
 
             const isTouch = e.type === 'touchmove';
             const clientX = isTouch ? e.touches[0].clientX : e.clientX;
             const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+            console.log('move3');
 
             const dx = clientX - startX;
             const dy = clientY - startY;
 
-            // 获取 Canvas 的实际显示尺寸（关键修改）
-            const canvasRect = originalCanvas.getBoundingClientRect();
-            const canvasWidth = canvasRect.width;
-            const canvasHeight = canvasRect.height;
+            // 获取 Canvas 实际绘图缓冲区尺寸（修复移动端触摸问题）
+            const canvasWidth = originalCanvas.width;
+            const canvasHeight = originalCanvas.height;
+            console.log('move4');
 
             if (isDragging) {
+                console.log('move5');
                 let newX = initialRectX + dx;
                 let newY = initialRectY + dy;
 
@@ -484,6 +492,8 @@
 
             updateCropRectDiv();
         };
+        document.addEventListener('mousemove', handleCropMove);
+        document.addEventListener('touchmove', handleCropMove);
 
         // --- 合并鼠标和触摸的抬起事件 ---
         function handleCropEnd(e) {

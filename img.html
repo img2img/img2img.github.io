@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>xxx</title>
+    <script src="https://cdn.jsdelivr.net/npm/heif-decoder@latest/dist/heif-decoder.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -252,6 +253,27 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     originalImage = new Image();
+                    if (file.type === 'image/heif' || file.type === 'image/heic') {
+                        const reader = new FileReader();
+                        reader.onload = async (e) => {
+                            const heifData = new Uint8Array(e.target.result);
+                            const images = await heifDecoder.decode(heifData);
+                            if (images.length > 0) {
+                                const { width, height, data } = images[0];
+                                const canvas = document.createElement('canvas');
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+                                const imageData = ctx.createImageData(width, height);
+                                imageData.data.set(data);
+                                ctx.putImageData(imageData, 0, 0);
+                                originalImage.src = canvas.toDataURL('image/png');
+                            }
+                        };
+                        reader.readAsArrayBuffer(file);
+                        return;
+                    }
+                    originalImage.src = e.target.result;
                     originalImage.onload = () => {
                         // Scale canvas to fit max dimensions while maintaining aspect ratio
                         const maxWidth = 400;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>手写签名提取透明电子签名</title>
+    <title>xxx</title>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -156,7 +156,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>手写签名提取透明电子签名图片</h1>
+        <h1>xxx</h1>
 
         <div class="controls">
             <div id="uploadArea" class="upload-area">
@@ -215,6 +215,7 @@
         let isResizing = false;
         let resizeHandle = '';
         let startX, startY, initialRectX, initialRectY, initialRectWidth, initialRectHeight;
+        let preWidth, preHeight; // 用于记录上一次的图片区域大小
 
         // --- Upload Logic ---
         uploadArea.addEventListener('click', () => imageUpload.click());
@@ -258,14 +259,18 @@
                             newWidth = (maxHeight / newHeight) * newWidth;
                             newHeight = maxHeight;
                         }
-
+                        
+                        preWidth = newWidth;
+                        preHeight = newHeight;
                         originalCanvas.width = newWidth;
                         originalCanvas.height = newHeight;
+                        originalCanvas.initialWidth = newWidth;
+                        originalCanvas.initialHeight = newHeight;
                         originalCtx.drawImage(originalImage, 0, 0, newWidth, newHeight);
 
                         
                         // Initialize crop rectangle to match original canvas position
-                        cropParams = { x: originalCanvas.offsetLeft, y: originalCanvas.offsetTop, width: originalCanvas.width, height: originalCanvas.height };
+                        cropParams = { x: 0, y: 0, width: originalCanvas.width, height: originalCanvas.height };
                         processedCanvas.width = cropParams.width;
                         processedCanvas.height = cropParams.height;
                         updateCropRectDiv();
@@ -469,6 +474,35 @@
                 processedCanvas.height = 1200;
                 applyProcessing();
             }
+        });
+
+
+        // 窗口缩放时同步剪裁框
+        window.addEventListener('resize', () => {
+            if (!originalImage || !originalCanvas.initialWidth) return; // 无图片时不执行
+
+            // 获取当前canvas尺寸
+            const rect = originalCanvas.getBoundingClientRect();
+            const currentWidth = rect.width;  // 实际显示宽度
+            const currentHeight = rect.height; // 实际显示高度
+
+            // 计算缩放比例（当前尺寸 / 初始尺寸）
+            const scaleX = currentWidth / preWidth;
+            const scaleY = currentHeight / preHeight;
+            preWidth = currentWidth;
+            preHeight = currentHeight;
+
+            // 按比例调整剪裁框参数
+            cropParams.x *= scaleX;
+            cropParams.y *= scaleY;
+            cropParams.width *= scaleX;
+            cropParams.height *= scaleY;
+
+            // 限制剪裁框不超出canvas范围
+            cropParams.x = Math.max(0, Math.min(cropParams.x, currentWidth - cropParams.width));
+            cropParams.y = Math.max(0, Math.min(cropParams.y, currentHeight - cropParams.height));
+
+            updateCropRectDiv(); // 更新剪裁框显示
         });
 
     </script>

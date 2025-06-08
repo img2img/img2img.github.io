@@ -267,10 +267,10 @@
                         originalCanvas.initialWidth = newWidth;
                         originalCanvas.initialHeight = newHeight;
                         originalCtx.drawImage(originalImage, 0, 0, newWidth, newHeight);
-
                         
+                        const rect = originalCanvas.getBoundingClientRect();
                         // Initialize crop rectangle to match original canvas position
-                        cropParams = { x: 0, y: 0, width: originalCanvas.width, height: originalCanvas.height };
+                        cropParams = { x: 0, y: 0, width: rect.width, height: rect.height };
                         processedCanvas.width = cropParams.width;
                         processedCanvas.height = cropParams.height;
                         updateCropRectDiv();

@@ -319,8 +319,11 @@
             tempCtx.drawImage(originalImage, 0, 0);
 
             // Calculate crop coordinates relative to the original image dimensions
-            const scaleX = originalImage.width / originalCanvas.width;
-            const scaleY = originalImage.height / originalCanvas.height;
+            const rect = originalCanvas.getBoundingClientRect();
+            // const currentWidth = rect.width;  // 实际显示宽度
+            // const currentHeight = rect.height; // 实际显示高度
+            const scaleX = originalImage.width / rect.width;
+            const scaleY = originalImage.height / rect.height;
 
             const sourceX = cropParams.x * scaleX;
             const sourceY = cropParams.y * scaleY;

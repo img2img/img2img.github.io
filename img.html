@@ -101,6 +101,13 @@
             background-color: #1976D2;
             transform: translateY(-1px);
         }
+        #downloadWatermarkBtn {
+            background-color: #ff0000;
+        }
+        #downloadWatermarkBtn:hover {
+            background-color: #cc0000;
+            transform: translateY(-1px);
+        }
         .images-display {
             display: grid;
             grid-template-columns: auto 50px auto;
@@ -170,6 +177,7 @@
                     <span id="thresholdValue">128</span>
                 </div>
                 <button id="downloadBtn" class="download-btn">下载处理后图片</button>
+                <button id="downloadWatermarkBtn" class="download-btn">下载带水印图片</button>
             </div>
         </div>
 
@@ -292,6 +300,53 @@
         });
 
         const downloadBtn = document.getElementById('downloadBtn');
+        const downloadWatermarkBtn = document.getElementById('downloadWatermarkBtn');
+
+        downloadWatermarkBtn.addEventListener('click', () => {
+            if (!processedCroppedCanvas) return;
+            // 创建带水印的canvas
+            const watermarkCanvas = document.createElement('canvas');
+            const watermarkCtx = watermarkCanvas.getContext('2d');
+            watermarkCanvas.width = processedCroppedCanvas.width;
+            watermarkCanvas.height = processedCroppedCanvas.height;
+            // 绘制处理后的图片
+            watermarkCtx.drawImage(processedCroppedCanvas, 0, 0);
+            // 添加水印文字（重复铺满）
+            watermarkCtx.font = '40px Arial';
+            watermarkCtx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            watermarkCtx.textAlign = 'center'; // 居中对齐以便均匀分布
+            watermarkCtx.textBaseline = 'middle';
+
+            const text = '透明图效果预览';
+            const textMetrics = watermarkCtx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = 40; // 字体大小对应的近似高度
+
+            // 设置水印间隔（1.5倍文字尺寸避免过于密集）
+            const hSpacing = textWidth + textHeight;
+            const vSpacing = textHeight * 1.5;
+
+            // 计算覆盖全图的行列数
+            const cols = Math.ceil(watermarkCanvas.width / hSpacing) + 1;
+            const rows = Math.ceil(watermarkCanvas.height / vSpacing) + 1;
+
+            // 循环绘制水印
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    const x = i * hSpacing;
+                    const y = j * vSpacing;
+                    watermarkCtx.fillText(text, x, y);
+                }
+            }
+            // 下载水印图片
+            const dataURL = watermarkCanvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataURL;
+            a.download = 'watermarked_image.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
         downloadBtn.addEventListener('click', () => {
             if (!processedCroppedCanvas) return;
             const dataURL = processedCroppedCanvas.toDataURL('image/png');

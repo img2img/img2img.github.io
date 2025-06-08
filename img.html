@@ -409,12 +409,18 @@
         // 同时监听鼠标和触摸的按下事件
         cropRectDiv.addEventListener('mousedown', handleCropStart);
         cropRectDiv.addEventListener('touchstart', handleCropStart);
-        document.addEventListener('mousemove', (e) => {
+
+        // --- 合并鼠标和触摸的移动事件 ---
+        function handleCropMove(e) {
             if (!isDragging && !isResizing) return;
             e.preventDefault();
 
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
+            const isTouch = e.type === 'touchmove';
+            const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+            const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
+            const dx = clientX - startX;
+            const dy = clientY - startY;
 
             if (isDragging) {
                 let newX = initialRectX + dx;
@@ -472,21 +478,22 @@
             }
 
             updateCropRectDiv();
-        });
+        };
 
-        document.addEventListener('mouseup', () => {
+        // --- 合并鼠标和触摸的抬起事件 ---
+        function handleCropEnd(e) {
             if (isDragging || isResizing) {
                 isDragging = false;
                 isResizing = false;
-                // 更新处理后画布尺寸为剪裁区域尺寸
-                // processedCanvas.width = cropParams.width;
-                // processedCanvas.height = cropParams.height;
                 processedCanvas.width = 400;
                 processedCanvas.height = 1200;
                 applyProcessing();
             }
-        });
+        }
 
+        // 同时监听鼠标和触摸的抬起事件
+        document.addEventListener('mouseup', handleCropEnd);
+        document.addEventListener('touchend', handleCropEnd);
 
         // 窗口缩放时同步剪裁框
         window.addEventListener('resize', () => {

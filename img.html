@@ -385,22 +385,30 @@
             cropRectDiv.style.height = cropParams.height + 'px';
         }
 
-        cropRectDiv.addEventListener('mousedown', (e) => {
-            e.stopPropagation(); // Prevent canvas mousedown if clicking on rect
+        // --- 合并鼠标和触摸的按下事件 ---
+        function handleCropStart(e) {
+            e.preventDefault(); // 阻止默认触摸行为（如滚动）
+            const isTouch = e.type === 'touchstart';
+            const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+            const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+
             if (e.target.classList.contains('handle')) {
                 isResizing = true;
                 resizeHandle = Array.from(e.target.classList).find(c => c !== 'handle');
             } else {
                 isDragging = true;
             }
-            startX = e.clientX;
-            startY = e.clientY;
+            startX = clientX;
+            startY = clientY;
             initialRectX = cropParams.x;
             initialRectY = cropParams.y;
             initialRectWidth = cropParams.width;
             initialRectHeight = cropParams.height;
-        });
+        }
 
+        // 同时监听鼠标和触摸的按下事件
+        cropRectDiv.addEventListener('mousedown', handleCropStart);
+        cropRectDiv.addEventListener('touchstart', handleCropStart);
         document.addEventListener('mousemove', (e) => {
             if (!isDragging && !isResizing) return;
             e.preventDefault();

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>xxx</title>
-    <script src="https://cdn.jsdelivr.net/npm/heif-decoder@latest/dist/heif-decoder.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -111,7 +110,7 @@
         }
         .images-display {
             display: grid;
-            grid-template-columns: auto 50px auto;
+            grid-template-columns: auto auto;
             gap: 1.5rem;
             justify-content: center;
             align-items: center;
@@ -176,6 +175,10 @@
                     <label for="thresholdSlider">阈值:</label>
                     <input type="range" id="thresholdSlider" min="0" max="255" value="128">
                     <span id="thresholdValue">128</span>
+                    <div class="grayscale-option">
+                        <input type="checkbox" id="grayscaleMode">
+                        <label for="grayscaleMode">开启黑白模式</label>
+                    </div>
                 </div>
                 <button id="downloadBtn" class="download-btn">下载处理后图片</button>
                 <button id="downloadWatermarkBtn" class="download-btn">下载带水印图片</button>
@@ -191,7 +194,7 @@
                     <div class="handle bl"></div><div class="handle bm"></div><div class="handle br"></div>
                 </div>
             </div>
-            <div class="arrow-wrapper">
+            <!-- <div class="arrow-wrapper">
                 <svg class="arrow-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
                     <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stop-color="#2196F3"/>
@@ -199,7 +202,7 @@
                     </linearGradient>
                     <path d="M14 12L10 8V10H4V14H10V16L14 12Z" fill="url(#arrowGradient)"/>
                 </svg>
-            </div>
+            </div> -->
             <div class="image-wrapper">
                 <canvas id="processedCanvas"></canvas>
             </div>
@@ -211,6 +214,7 @@
         const uploadArea = document.getElementById('uploadArea');
         const thresholdSlider = document.getElementById('thresholdSlider');
         const thresholdValueDisplay = document.getElementById('thresholdValue');
+        const grayscaleMode = document.getElementById('grayscaleMode');
         const originalCanvas = document.getElementById('originalCanvas');
         const processedCanvas = document.getElementById('processedCanvas');
         const originalCtx = originalCanvas.getContext('2d');
@@ -253,27 +257,6 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     originalImage = new Image();
-                    if (file.type === 'image/heif' || file.type === 'image/heic') {
-                        const reader = new FileReader();
-                        reader.onload = async (e) => {
-                            const heifData = new Uint8Array(e.target.result);
-                            const images = await heifDecoder.decode(heifData);
-                            if (images.length > 0) {
-                                const { width, height, data } = images[0];
-                                const canvas = document.createElement('canvas');
-                                canvas.width = width;
-                                canvas.height = height;
-                                const ctx = canvas.getContext('2d');
-                                const imageData = ctx.createImageData(width, height);
-                                imageData.data.set(data);
-                                ctx.putImageData(imageData, 0, 0);
-                                originalImage.src = canvas.toDataURL('image/png');
-                            }
-                        };
-                        reader.readAsArrayBuffer(file);
-                        return;
-                    }
-                    originalImage.src = e.target.result;
                     originalImage.onload = () => {
                         // Scale canvas to fit max dimensions while maintaining aspect ratio
                         const maxWidth = 400;
@@ -418,11 +401,19 @@
 
             // 遍历剪裁区域像素，将浅色背景设为透明
             for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-                if (r > threshold && g > threshold && b > threshold) {
+                let r = data[i];
+                let g = data[i + 1];
+                let b = data[i + 2];
+                
+                // 如果开启黑白模式，转换为灰度
+                const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                if (gray > threshold) {
                     data[i + 3] = 0; // 透明度设为0（完全透明）
+                }
+                if (grayscaleMode.checked) {
+                    data[i] = gray;
+                    data[i + 1] = gray;
+                    data[i + 2] = gray;
                 }
             }
             // Clear processed canvas and draw the new processed image, scaled to fit
